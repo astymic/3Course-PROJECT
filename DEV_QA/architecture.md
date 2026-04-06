@@ -2,195 +2,251 @@
 
 **Автор:** Мульков Максим (Dev/QA, частково SA)
 **Дата:** 06.04.2026
-**Версія:** 1.0
+**Версія:** 2.0
 
 ---
 
-## 1. Огляд архітектури
+## 1. Загальна архітектура системи (Three-Tier)
 
-Система побудована за класичною **трирівневою архітектурою** (Three-Tier Architecture):
+```mermaid
+graph TB
+    subgraph CLIENT["🖥️ Клієнтський рівень (Frontend)"]
+        CAT["📦 Каталог товарів<br/>+ фільтри"]
+        CARD["👟 Картка товару<br/>фото, розміри"]
+        CART["🛒 Кошик &<br/>Замовлення"]
+        POPUP["💬 Popup-чат<br/>консультація"]
+        PROF["👤 Особистий<br/>кабінет"]
+    end
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      КЛІЄНТСЬКИЙ РІВЕНЬ                     │
-│                     (Client / Frontend)                      │
-│                                                              │
-│   ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│   │   Каталог    │  │   Кошик &    │  │  Popup-чат       │  │
-│   │   товарів    │  │   Замовлення │  │  консультація    │  │
-│   │   + фільтри  │  │              │  │                  │  │
-│   └──────────────┘  └──────────────┘  └──────────────────┘  │
-│   ┌──────────────┐  ┌──────────────┐                        │
-│   │   Картка     │  │  Особистий   │                        │
-│   │   товару     │  │  кабінет     │                        │
-│   └──────────────┘  └──────────────┘                        │
-└────────────────────────────┬────────────────────────────────┘
-                             │ HTTPS / REST API
-┌────────────────────────────▼────────────────────────────────┐
-│                     СЕРВЕРНИЙ РІВЕНЬ                         │
-│                    (Backend / API Server)                     │
-│                                                              │
-│   ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│   │  Модуль      │  │  Модуль      │  │  Модуль          │  │
-│   │  каталогу    │  │  замовлень   │  │  авторизації     │  │
-│   └──────────────┘  └──────────────┘  └──────────────────┘  │
-│   ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│   │  Модуль      │  │  Модуль      │  │  Адмін-панель    │  │
-│   │  складу      │  │  оплати      │  │  API             │  │
-│   └──────────────┘  └──────────────┘  └──────────────────┘  │
-└────────────────────────────┬────────────────────────────────┘
-                             │ SQL / ORM
-┌────────────────────────────▼────────────────────────────────┐
-│                     РІВЕНЬ ДАНИХ                             │
-│                    (Database + Storage)                       │
-│                                                              │
-│   ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│   │  PostgreSQL  │  │  Файлове     │  │  Redis (кеш,     │  │
-│   │  (основна    │  │  сховище     │  │  сесії)          │  │
-│   │   БД)        │  │  (фото)      │  │                  │  │
-│   └──────────────┘  └──────────────┘  └──────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+    subgraph SERVER["⚙️ Серверний рівень (Backend API)"]
+        M_CAT["Модуль каталогу"]
+        M_ORD["Модуль замовлень"]
+        M_AUTH["Модуль авторизації"]
+        M_STOCK["Модуль складу"]
+        M_PAY["Модуль оплати"]
+        M_ADMIN["Адмін-панель API"]
+    end
+
+    subgraph DATA["💾 Рівень даних"]
+        PG["🐘 PostgreSQL<br/>(основна БД)"]
+        FILES["📁 Cloudinary<br/>(фото товарів)"]
+        REDIS["⚡ Redis<br/>(кеш, сесії)"]
+    end
+
+    CLIENT -->|"HTTPS / REST API"| SERVER
+    SERVER -->|"SQL / Prisma ORM"| DATA
+
+    style CLIENT fill:#1a1a2e,stroke:#e94560,color:#fff
+    style SERVER fill:#16213e,stroke:#0f3460,color:#fff
+    style DATA fill:#0f3460,stroke:#533483,color:#fff
 ```
 
 ---
 
-## 2. Обраний технологічний стек
+## 2. Діаграма взаємодії компонентів
+
+```mermaid
+graph LR
+    BUYER["🛍️ Покупець<br/>(браузер)"] --> FRONT["🌐 Vercel<br/>Next.js Frontend"]
+    MANAGER["👔 Менеджер<br/>(браузер)"] --> ADMIN["🔧 Адмін-панель<br/>Next.js"]
+
+    FRONT -->|"REST API"| BACK["⚙️ Backend<br/>Node.js + Express"]
+    ADMIN -->|"REST API"| BACK
+
+    BACK --> PG["🐘 PostgreSQL<br/>(Render DB)"]
+    BACK --> CLOUD["☁️ Cloudinary<br/>(фото)"]
+    BACK --> LIQPAY["💳 LiqPay API<br/>(оплата)"]
+    BACK --> NP["🚚 Нова Пошта API<br/>(доставка)"]
+
+    FRONT --> TAWK["💬 Tawk.to<br/>(popup-чат)"]
+
+    style BUYER fill:#e94560,stroke:#fff,color:#fff
+    style MANAGER fill:#533483,stroke:#fff,color:#fff
+    style FRONT fill:#0f3460,stroke:#e94560,color:#fff
+    style ADMIN fill:#0f3460,stroke:#533483,color:#fff
+    style BACK fill:#16213e,stroke:#0f3460,color:#fff
+    style PG fill:#336791,stroke:#fff,color:#fff
+    style CLOUD fill:#3448c5,stroke:#fff,color:#fff
+    style LIQPAY fill:#7ab800,stroke:#fff,color:#fff
+    style NP fill:#e2001a,stroke:#fff,color:#fff
+    style TAWK fill:#1cc761,stroke:#fff,color:#fff
+```
+
+---
+
+## 3. ER-діаграма бази даних
+
+```mermaid
+erDiagram
+    Category ||--o{ Product : "має"
+    Product ||--|{ ProductSize : "має розміри"
+    Product ||--o{ OrderItem : "у замовленнях"
+    User ||--o{ Order : "створює"
+    Order ||--|{ OrderItem : "містить"
+    Product ||--o{ ProductVariant : "варіанти (Фаза 2)"
+
+    Category {
+        int id PK
+        string name
+        string slug
+        string season "літнє / зимове"
+        int parent_id FK "підкатегорії"
+    }
+
+    Product {
+        int id PK
+        string name
+        text description
+        decimal price
+        int category_id FK
+        string material
+        json images "масив URL фото"
+        boolean is_active
+        datetime created_at
+    }
+
+    ProductSize {
+        int id PK
+        int product_id FK
+        int size "35, 36, 37..."
+        int quantity "залишок на складі"
+        boolean is_available "автоматично"
+    }
+
+    User {
+        int id PK
+        string email
+        string phone
+        string name
+        string password_hash
+        enum role "buyer / manager / admin"
+    }
+
+    Order {
+        int id PK
+        int user_id FK
+        enum status "new / paid / shipped / done"
+        enum payment_method "card / cod"
+        enum delivery_method "nova_poshta / courier"
+        string np_ttn "номер ТТН"
+        decimal total_amount
+        datetime created_at
+    }
+
+    OrderItem {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int size
+        int quantity
+        decimal price
+    }
+
+    ProductVariant {
+        int id PK
+        int product_id FK
+        string sole_type "ФАЗА 2"
+        string material "ФАЗА 2"
+        string lining "ФАЗА 2"
+        string color "ФАЗА 2"
+        decimal price_modifier "ФАЗА 2"
+    }
+```
+
+> ⚠️ `ProductVariant` — НЕ реалізується в MVP. Закладена в схему для Фази 2 (конструктор).
+
+---
+
+## 4. Обраний технологічний стек
 
 | Компонент | Технологія | Обґрунтування |
 |---|---|---|
-| **Frontend** | Next.js (React) | SSR для SEO каталогу, швидкий рендеринг, велика екосистема |
-| **CSS** | Tailwind CSS | Швидка розробка адаптивного UI, consistency |
-| **Backend** | Node.js + Express (або Next.js API Routes) | Єдина мова (JS/TS) для frontend і backend, швидкість розробки |
+| **Frontend** | Next.js (React) | SSR для SEO каталогу, швидкий рендеринг |
+| **CSS** | Tailwind CSS | Швидка розробка адаптивного UI |
+| **Backend** | Node.js + Express | Єдина мова JS/TS, швидкість розробки |
 | **ORM** | Prisma | Типізація, міграції, зручна робота з PostgreSQL |
-| **База даних** | PostgreSQL | Надійна, безкоштовна, підтримка JSON для варіацій товару |
-| **Кешування** | Redis | Швидкий доступ до залишків складу, сесії користувачів |
-| **Файлове сховище** | Cloudinary (або AWS S3) | Зберігання та оптимізація фото товарів |
-| **Оплата** | LiqPay API (ПриватБанк) | Найпоширеніший платіжний шлюз в Україні |
-| **Доставка** | Нова Пошта API | Офіційний API для розрахунку вартості та створення ТТН |
-| **Popup-чат** | Tawk.to (безкоштовний) або кастомний віджет | Вимога клієнта: спливне вікно консультації |
-| **Хостинг** | Vercel (frontend) + Railway/Render (backend) | Безкоштовні/дешеві плани для MVP |
-| **Домен** | .ua через Hostiq або Ukraine.com.ua | Географічна прив'язка до України |
+| **База даних** | PostgreSQL | Надійна, безкоштовна, JSON для варіацій |
+| **Кешування** | Redis (Upstash) | Швидкий доступ до залишків, сесії |
+| **Фото** | Cloudinary | Зберігання та автооптимізація зображень |
+| **Оплата** | LiqPay (ПриватБанк) | Найпоширеніший шлюз в Україні |
+| **Доставка** | Нова Пошта API | Офіційний API, розрахунок вартості + ТТН |
+| **Popup-чат** | Tawk.to | Безкоштовний, вимога клієнта |
+| **Хостинг** | Vercel + Railway/Render | Free tiers для MVP |
+| **Домен** | .ua (Hostiq) | Географічна прив'язка |
 
 ---
 
-## 3. Діаграма взаємодії компонентів
+## 5. Потік замовлення (User Journey)
 
-```
-                   ┌─────────────┐
-                   │  Покупець    │
-                   │  (браузер)  │
-                   └──────┬──────┘
-                          │
-                   ┌──────▼──────┐
-                   │   Vercel    │
-                   │  (Next.js   │
-                   │  Frontend)  │
-                   └──────┬──────┘
-                          │ REST API
-                   ┌──────▼──────┐         ┌──────────────┐
-                   │   Backend   │────────►│  PostgreSQL   │
-                   │  (Node.js)  │         │  (Render DB)  │
-                   └──┬───┬───┬──┘         └──────────────┘
-                      │   │   │
-            ┌─────────┘   │   └────────────┐
-            ▼             ▼                ▼
-     ┌────────────┐ ┌──────────┐   ┌──────────────┐
-     │  LiqPay    │ │ Нова     │   │ Cloudinary   │
-     │  API       │ │ Пошта    │   │ (фото)       │
-     │  (оплата)  │ │ API      │   │              │
-     └────────────┘ └──────────┘   └──────────────┘
+```mermaid
+sequenceDiagram
+    actor Buyer as 🛍️ Покупець
+    participant Front as 🌐 Frontend
+    participant Back as ⚙️ Backend
+    participant DB as 🐘 PostgreSQL
+    participant LP as 💳 LiqPay
+    participant NP as 🚚 Нова Пошта
 
-                   ┌─────────────┐
-                   │  Менеджер   │
-                   │  (браузер)  │
-                   └──────┬──────┘
-                          │
-                   ┌──────▼──────┐
-                   │ Адмін-      │
-                   │ панель      │──── той самий Backend
-                   │ (Next.js)   │
-                   └─────────────┘
+    Buyer->>Front: Відкриває каталог
+    Front->>Back: GET /api/products?size=38
+    Back->>DB: SELECT з фільтрами
+    DB-->>Back: Товари + залишки
+    Back-->>Front: JSON список
+    Front-->>Buyer: Каталог з наявністю
+
+    Buyer->>Front: Додає товар у кошик
+    Buyer->>Front: Оформлює замовлення
+
+    alt Оплата карткою
+        Front->>Back: POST /api/orders
+        Back->>DB: Створює Order + зменшує quantity
+        Back->>LP: Створює платіж
+        LP-->>Buyer: Форма оплати
+        Buyer->>LP: Оплачує
+        LP-->>Back: Callback (success)
+        Back->>DB: status → paid
+    else Накладений платіж
+        Front->>Back: POST /api/orders (payment=cod)
+        Back->>DB: Створює Order, status → new
+    end
+
+    Back->>NP: Створює ТТН
+    NP-->>Back: Номер ТТН
+    Back->>DB: Зберігає np_ttn
+    Back-->>Buyer: Підтвердження замовлення + ТТН
 ```
 
 ---
 
-## 4. Структура бази даних (ER-діаграма — основні сутності)
+## 6. Ключові архітектурні рішення
 
-```
-┌──────────────┐     ┌──────────────────┐     ┌──────────────┐
-│   Category   │     │     Product      │     │  ProductSize │
-│──────────────│     │──────────────────│     │──────────────│
-│ id           │◄───┐│ id               │────►│ id           │
-│ name         │    ││ name             │     │ product_id   │
-│ slug         │    ││ description      │     │ size         │
-│ season       │    ││ price            │     │ quantity     │ ◄── облік складу
-│ parent_id    │    ││ category_id  ────┘     │ is_available │     по розмірах!
-└──────────────┘    ││ material          │     └──────────────┘
-                    ││ images[]          │
-                    │└──────────────────┘
-                    │
-┌──────────────┐    │  ┌──────────────────┐     ┌──────────────┐
-│    User      │    │  │      Order       │     │  OrderItem   │
-│──────────────│    │  │──────────────────│     │──────────────│
-│ id           │    │  │ id               │────►│ id           │
-│ email        │    │  │ user_id          │     │ order_id     │
-│ phone        │    │  │ status           │     │ product_id   │
-│ name         │    │  │ payment_method   │     │ size         │
-│ password_hash│    │  │ delivery_method  │     │ quantity     │
-│ role (enum)  │    │  │ np_ttn           │     │ price        │
-└──────────────┘    │  │ total_amount     │     └──────────────┘
-                    │  │ created_at       │
-                    │  └──────────────────┘
-                    │
-                    │  ┌──────────────────────┐
-                    │  │ ProductVariant       │  ◄── ФАЗА 2:
-                    │  │ (для конструктора)   │      конструктор
-                    │  │──────────────────────│
-                    └──│ id                   │
-                       │ product_id           │
-                       │ sole_type            │
-                       │ material             │
-                       │ lining (хутро/байка) │
-                       │ color                │
-                       │ price_modifier       │
-                       └──────────────────────┘
-```
+### 6.1. Облік складу в реальному часі
+- Наявність у таблиці `ProductSize` (запис для кожного розміру).
+- При замовленні `quantity` зменшується автоматично.
+- `quantity = 0` → розмір «Немає в наявності» на сайті і в адмін-панелі.
 
-> ⚠️ **Таблиця `ProductVariant` НЕ реалізується в MVP**, але вже закладена в схему БД, щоб у Фазі 2 конструктор взуття можна було додати без міграції або переробки архітектури.
+### 6.2. Підготовка до конструктора (Фаза 2)
+- Таблиця `ProductVariant` закладена в ER-схему.
+- Комбінації: підошва × матеріал × підклад × колір.
+
+### 6.3. Безпека
+- bcrypt для паролів, JWT для авторизації.
+- HTTPS (SSL від Vercel / Let's Encrypt).
+- Валідація через Prisma ORM (захист від SQL-ін'єкцій).
+
+### 6.4. Mobile-first
+- Більшість покупців Наталії приходять з Instagram → з телефону.
+- Адаптивний дизайн: мобільний → планшет → десктоп.
 
 ---
 
-## 5. Ключові архітектурні рішення
+## 7. Зовнішні інтеграції
 
-### 5.1. Облік складу в реальному часі
-- Наявність зберігається в таблиці `ProductSize` (окремий запис для кожного розміру кожного товару).
-- При оформленні замовлення `quantity` зменшується автоматично.
-- Якщо `quantity = 0` → на сайті розмір показується як «Немає в наявності».
-- Менеджер в адмін-панелі бачить і редагує залишки без виходу на склад.
-
-### 5.2. Підготовка до конструктора (Фаза 2)
-- Модель `Product` побудована з урахуванням можливості додавання варіантів.
-- Поле `material` вже існує. У фазі 2 `ProductVariant` дозволить комбінувати: підошва × матеріал × підклад × колір.
-
-### 5.3. Безпека
-- Паролі — bcrypt хешування.
-- JWT-токени для авторизації.
-- HTTPS обов'язково (SSL від Vercel / Let's Encrypt).
-- Валідація вводу на backend (захист від SQL-ін'єкцій через ORM Prisma).
-
-### 5.4. Адаптивність
-- Mobile-first підхід (більшість покупців з Instagram приходять з телефону).
-- Підтримка: мобільний, планшет, десктоп.
-
----
-
-## 6. Зовнішні інтеграції (API)
-
-| Інтеграція | Провайдер | Що робить | Пріоритет |
-|---|---|---|---|
-| Оплата карткою | LiqPay (ПриватБанк) | Прийом онлайн-платежів | Sprint 2 |
-| Накладений платіж | Власна логіка | Позначка в замовленні "оплата при отриманні" | Sprint 2 |
-| Доставка НП | Нова Пошта API | Розрахунок вартості, вибір відділення, створення ТТН | Sprint 2 |
-| Доставка кур'єром | Власна логіка | Фіксована ціна або розрахунок по місту | Sprint 2 |
-| Popup-консультація | Tawk.to | Безкоштовний чат-віджет для зв'язку з менеджером | Sprint 2 |
-| Фото товарів | Cloudinary | Завантаження, зберігання, оптимізація зображень | Sprint 1 |
+| Інтеграція | Провайдер | Що робить | Sprint |
+|---|---|---|:---:|
+| Оплата карткою | LiqPay | Прийом онлайн-платежів | 2 |
+| Накладений платіж | Власна логіка | Позначка "оплата при отриманні" | 2 |
+| Доставка НП | Нова Пошта API | Вибір відділення, ТТН | 2 |
+| Кур'єр | Власна логіка | Фіксована ціна по місту | 2 |
+| Popup-чат | Tawk.to | Зв'язок з менеджером | 2 |
+| Фото товарів | Cloudinary | Завантаження, оптимізація | 1 |
