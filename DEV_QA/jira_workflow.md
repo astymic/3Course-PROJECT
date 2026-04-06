@@ -10,32 +10,17 @@
 
 ```mermaid
 stateDiagram-v2
-    [*] --> ToDo: Задача створена
-    ToDo --> InProgress: Виконавець бере в роботу
-    InProgress --> Review: Результат готовий
-    Review --> Done: ✅ Перевірено PM/QA
-    Review --> InProgress: ❌ Зауваження
+    [*] --> ToDo : Задача створена
+    ToDo --> InProgress : Виконавець бере в роботу
+    InProgress --> Review : Результат готовий
+    Review --> Done : Перевірено PM або QA
+    Review --> InProgress : Зауваження, доопрацювати
     Done --> [*]
 
-    state ToDo {
-        direction LR
-        note right of ToDo: Задачі, що чекають\nна виконання
-    }
-
-    state InProgress {
-        direction LR
-        note right of InProgress: В роботі у виконавця\nWIP ліміт: 2
-    }
-
-    state Review {
-        direction LR
-        note right of Review: Перевірка PM, BA\nабо QA
-    }
-
-    state Done {
-        direction LR
-        note right of Done: Завершено\nта прийнято
-    }
+    note right of ToDo : Задачі що чекають на виконання
+    note right of InProgress : В роботі, WIP ліміт 2
+    note right of Review : Перевірка PM, BA або QA
+    note right of Done : Завершено та прийнято
 ```
 
 ---
@@ -45,12 +30,16 @@ stateDiagram-v2
 **Scrum Board** — відповідає Adaptive/Scrum методології.
 
 ```mermaid
-block-beta
-    columns 4
-    A["📋 TO DO"]:1
-    B["🔨 IN PROGRESS"]:1
-    C["🔍 REVIEW"]:1
-    D["✅ DONE"]:1
+graph LR
+    A["📋 TO DO"] --> B["🔨 IN PROGRESS"]
+    B --> C["🔍 REVIEW"]
+    C --> D["✅ DONE"]
+    C -.->|Зауваження| B
+
+    style A fill:#e3f2fd,stroke:#1565c0,color:#1565c0
+    style B fill:#fff3e0,stroke:#e65100,color:#e65100
+    style C fill:#f3e5f5,stroke:#6a1b9a,color:#6a1b9a
+    style D fill:#e8f5e9,stroke:#2e7d32,color:#2e7d32
 ```
 
 ### Правила переходу:
