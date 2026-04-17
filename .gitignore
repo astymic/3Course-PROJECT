@@ -1,2 +1,4 @@
-# Робоча папка для вхідних файлів від тімейтів (не комітити)
-New Files/
+sprint1/node_modules/
+sprint1/.next/
+sprint1/prisma/dev.db
+sprint1/prisma/dev.db-journal
