@@ -1,4 +1,5 @@
-sprint1/node_modules/
-sprint1/.next/
-sprint1/prisma/dev.db
-sprint1/prisma/dev.db-journal
+# New Files drop zone (not committed)
+New Files/
+
+# Demo folder — has its own separate git repo
+demo/
